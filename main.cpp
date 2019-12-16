@@ -21,7 +21,7 @@ int main() {
     tree::Tree <char *> langTree = {};
     langTree.getG(buffer);
     langTree.dump();
-    langTree.saveTo("AST.txt");
+//    langTree.saveTo("AST.txt");
 
     debug.close();
     delete [] buffer;

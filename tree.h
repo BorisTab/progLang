@@ -7,7 +7,7 @@
 #include <cstring>
 #include <cmath>
 
-const int operatorsCount = 22;
+const int operatorsCount = 23;
 
 class smileOp {
 public:
@@ -44,7 +44,8 @@ static const smileOp smileOperators[operatorsCount] = {
         smileOp("circle", "🔁",4),            // 18
         smileOp("sqrt", "✔", 3),              // 19      
         smileOp("==", "🆔", 4),               // 20 
-        smileOp("<", "◀", 3)                 // 21        
+        smileOp("<", "◀", 3),                // 21
+        smileOp("main", "🏁", 4)              // 22
 };
 
 namespace tree {
@@ -215,6 +216,11 @@ namespace tree {
 
                 node->rightChild = getFunc();
 
+            } else if(isOpCompared(22)) {
+                node = newNode("D", SYNTAX_OPERATION);
+                s += smileOperators[22].size;
+
+                node->rightChild = getMain();
             } else
                 return node;
 
@@ -238,6 +244,33 @@ namespace tree {
             skipUnprintableSymbols();
             Node <elemType> *node = newNode("Def", SYNTAX_OPERATION);
             Node <elemType> *rightVal = node->rightChild = getStr();
+
+            skipUnprintableSymbols();
+            if (isOpCompared(7)) {
+                s += smileOperators[7].size;
+                node->leftChild = getVarList();
+
+                skipUnprintableSymbols();
+                if (isOpCompared(8)) {
+                    s += smileOperators[8].size;
+                } else {
+                    printf("Syntax error: expected \'⏩\' after function args\n");
+                    exit(SYNTAX_ERROR);
+                }
+            } else {
+                printf("Syntax error: expected \'⏪\' after function name\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            rightVal->rightChild = getBWrap();
+
+            return node;
+        }
+
+        Node <elemType> *getMain() {
+            skipUnprintableSymbols();
+            Node <elemType> *node = newNode("Def", SYNTAX_OPERATION);
+            Node <elemType> *rightVal = node->rightChild = newNode("main", SYNTAX_OPERATION);
 
             skipUnprintableSymbols();
             if (isOpCompared(7)) {
