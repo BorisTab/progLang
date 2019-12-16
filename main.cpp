@@ -8,7 +8,7 @@
 int main() {
     char program[FILENAME_MAX] = "../emj.smile";
 
-    std::ofstream debug ("../debug.txt");
+//    std::ofstream debug ("../debug.txt");
 
     int size = getFileSize(program);
     char *buffer = new char [size] ();
@@ -18,12 +18,12 @@ int main() {
 //        std::cout << smileOperator.opName << smileOperator.symbol.length() << std::endl;
 //    }
 
-    tree::Tree <char *> langTree = {};
-    langTree.getG(buffer);
+    tree::Tree <char *> langTree ('L', "AST.txt");
+//    langTree.getG(buffer);
     langTree.dump();
 //    langTree.saveTo("AST.txt");
 
-    debug.close();
+//    debug.close();
     delete [] buffer;
     return 0;
 }

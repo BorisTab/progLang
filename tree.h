@@ -147,7 +147,7 @@ namespace tree {
             assert(outFile);
             assert(node);
 
-            *outFile << "{ \"" << node->value << "\" ";
+            *outFile << "{ " << node->value << " ";
 
             if (!node->leftChild && !node->rightChild) {
                 *outFile << "} ";
@@ -155,37 +155,40 @@ namespace tree {
             }
 
             if (node->leftChild) saveNode(outFile, node->leftChild);
-            else *outFile << "$ ";
+            else *outFile << "@ ";
 
             if (node->rightChild) saveNode(outFile, node->rightChild);
-            else *outFile << "$ ";
+            else *outFile << "@ ";
 
             *outFile << "} ";
         }
 
         void writeNode(char **buffer, Node <elemType> *node) {
-            if (**buffer == '$') (*buffer) += 2;
-            else if (**buffer == '{'){
-                (*buffer) += 2 + spaceN((*buffer) + 1);
-                *(strchr(*buffer, '"')) = '\0';
+            (*buffer) += spaceN(*buffer);
 
-                insertLeft(node, *buffer);
-                (*buffer) += strlen(*buffer) + 2;
+            if (**buffer == '@') (*buffer) += 1 + spaceN(*buffer + 1);
+            else if (**buffer == '{'){
+                (*buffer) += 1 + spaceN((*buffer) + 1);
+                *(strchr(*buffer, ' ')) = '\0';
+
+                node->leftChild = newNode(*buffer);
+                (*buffer) += strlen(*buffer) + 1;
                 writeNode(buffer, node->leftChild);
             }
 
-            if (**buffer == '$') (*buffer) += 2;
+            (*buffer) += spaceN(*buffer);
+            if (**buffer == '@') (*buffer) += 1 + spaceN(*buffer + 1);
             else if (**buffer == '{'){
-                (*buffer) += 2 + spaceN((*buffer) + 1);
-                *(strchr(*buffer, '"')) = '\0';
+                (*buffer) += 1 + spaceN((*buffer) + 1);
+                *(strchr(*buffer, ' ')) = '\0';
 
-                insertRight(node, *buffer);
-                (*buffer) += strlen(*buffer) + 2;
+                node->rightChild = newNode(*buffer);
+                (*buffer) += strlen(*buffer) + 1;
                 writeNode(buffer, node->rightChild);
             }
 
             if (**buffer == '}') {
-                (*buffer) += 2;
+                (*buffer) += 1 + spaceN(*buffer + 1);
                 return;
             }
         }
@@ -205,19 +208,19 @@ namespace tree {
             Node <elemType> *node = nullptr;
 
             if (isOpCompared(16)) {
-                node = newNode("D", SYNTAX_OPERATION);
+                node = newNode("DECLARATION", SYNTAX_OPERATION);
                 s += smileOperators[16].size;
 
                 node->rightChild = getVar();
 
             } else if(isOpCompared(3)) {
-                node = newNode("D", SYNTAX_OPERATION);
+                node = newNode("DECLARATION", SYNTAX_OPERATION);
                 s += smileOperators[3].size;
 
                 node->rightChild = getFunc();
 
             } else if(isOpCompared(22)) {
-                node = newNode("D", SYNTAX_OPERATION);
+                node = newNode("DECLARATION", SYNTAX_OPERATION);
                 s += smileOperators[22].size;
 
                 node->rightChild = getMain();
@@ -242,7 +245,7 @@ namespace tree {
 
         Node <elemType> *getFunc() {
             skipUnprintableSymbols();
-            Node <elemType> *node = newNode("Def", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("FUNCTION", SYNTAX_OPERATION);
             Node <elemType> *rightVal = node->rightChild = getStr();
 
             skipUnprintableSymbols();
@@ -269,7 +272,7 @@ namespace tree {
 
         Node <elemType> *getMain() {
             skipUnprintableSymbols();
-            Node <elemType> *node = newNode("Def", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("FUNCTION", SYNTAX_OPERATION);
             Node <elemType> *rightVal = node->rightChild = newNode("main", SYNTAX_OPERATION);
 
             skipUnprintableSymbols();
@@ -317,13 +320,13 @@ namespace tree {
         }
 
         Node <elemType> *getB() {
-            Node <elemType> *node = newNode("B", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("BLOCK", SYNTAX_OPERATION);
             node->rightChild = getOp();
             return node;
         }
 
         Node <elemType> *getOp() {
-            Node <elemType> *node = newNode("Op", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("OP", SYNTAX_OPERATION);
 
             skipUnprintableSymbols();
             if (isOpCompared(7)){
@@ -420,7 +423,7 @@ namespace tree {
         }
 
         Node <elemType> *getCall() {
-            Node <elemType> *node = newNode("Call", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("CALL", SYNTAX_OPERATION);
 
             node->rightChild = getStr();
 
@@ -446,7 +449,7 @@ namespace tree {
         }
 
         Node <elemType> *getRet() {
-            Node <elemType> *node = newNode("Return", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("RETURN", SYNTAX_OPERATION);
 
             node->rightChild = getExp();
             if (!node->rightChild) {
@@ -458,7 +461,7 @@ namespace tree {
         }
 
         Node <elemType> *getScan() {
-            Node <elemType> *node = newNode("Input", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("INPUT", SYNTAX_OPERATION);
 
             node->rightChild = getStr();
             if (!node->rightChild) {
@@ -470,7 +473,7 @@ namespace tree {
         }
 
         Node <elemType> *getPrint() {
-            Node <elemType> *node = newNode("Output", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("OUTPUT", SYNTAX_OPERATION);
 
             node->rightChild = getExp();
             if (!node->rightChild) {
@@ -482,7 +485,7 @@ namespace tree {
         }
 
         Node <elemType> *getAssign() {
-            Node <elemType> *node = newNode("=", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("ASSIGNMENT", SYNTAX_OPERATION);
 
             node->leftChild = getStr();
 
@@ -500,7 +503,7 @@ namespace tree {
         }
 
         Node <elemType> *getWhile() {
-            Node <elemType> *node = newNode("While", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("WHILE", SYNTAX_OPERATION);
 
             skipUnprintableSymbols();
             if (isOpCompared(7)) {
@@ -524,7 +527,7 @@ namespace tree {
         }
 
         Node <elemType> *getIf() {
-            Node <elemType> *node = newNode("If", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("IF", SYNTAX_OPERATION);
 
             skipUnprintableSymbols();
             if (isOpCompared(7)) {
@@ -558,15 +561,15 @@ namespace tree {
 
             skipUnprintableSymbols();
             if (isOpCompared(20)) {
-                node = newNode("==", SYNTAX_OPERATION);
+                node = newNode("EQUAL", SYNTAX_OPERATION);
                 s += smileOperators[20].size;
 
             } else if (isOpCompared(21)) {
-                node = newNode("smaller", SYNTAX_OPERATION);
+                node = newNode("BELOW", SYNTAX_OPERATION);
                 s += smileOperators[21].size;
 
             } else if (isOpCompared(9)) {
-                node = newNode("bigger", SYNTAX_OPERATION);
+                node = newNode("ABOVE", SYNTAX_OPERATION);
                 s += smileOperators[9].size;
 
             } else {
@@ -615,7 +618,7 @@ namespace tree {
 
             if (!rightVal) return nullptr;
 
-            Node <elemType> *node = newNode("varlist", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("VARLIST", SYNTAX_OPERATION);
             node->rightChild = rightVal;
 
             skipUnprintableSymbols();
@@ -629,7 +632,7 @@ namespace tree {
 
         Node <elemType> *getVar() {
             skipUnprintableSymbols();
-            Node <elemType> *node = newNode("Var", SYNTAX_OPERATION);
+            Node <elemType> *node = newNode("INITIALIZE", SYNTAX_OPERATION);
             node->rightChild = getStr();
 
             skipUnprintableSymbols();
@@ -855,15 +858,37 @@ namespace tree {
             root = node;
         }
 
-        Tree(char type, const char *inPath) {
-            if (type == 'P') prefixRead(inPath);
+        Tree(char load, const char *inPath) {
+            assert(load == 'L');
 
-//        else if (type == 'I') infixRead(inPath);
 
-            else {
-                printf("Error: Wrong key");
-                exit(WRONG_KEY);
+            int fileSize = getFileSize(inPath);
+
+            char *buffer = new char[fileSize] ();
+            char *bufferStart = buffer;
+            readFile(inPath, buffer, fileSize);
+
+
+            if (*buffer != '{') {
+                printf("Error: No tree in file");
+                exit(NOT_FOUND_TREE_IN_FILE);
             }
+
+            if (*(buffer + spaceN(buffer + 1)) == '}') {
+                printf("Error: tree is empty");
+                exit(NOT_FOUND_TREE_IN_FILE);
+            }
+
+            buffer += 1 + spaceN(buffer + 1);
+            char str[100] = "";
+            sscanf(buffer, "%s", str);
+
+            auto *node = newNode(str);
+            root = node;
+            buffer += strlen(str);
+            buffer += spaceN(buffer + 1) + 1;
+
+            writeNode(&buffer, root);
         }
 
         Tree() = default;
@@ -880,7 +905,7 @@ namespace tree {
                 exit(SYNTAX_ERROR);
             }
 
-            root = newNode("P", SYNTAX_OPERATION);
+            root = newNode("PROGRAM_ROOT", SYNTAX_OPERATION);
             root->rightChild = valNode;
             return root;
         }
