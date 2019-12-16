@@ -47,7 +47,7 @@ int readFile(const char inPath[], char *text, size_t textSize) {
         perror("File opening failed");
         return errno;
     }
-    fread(text, 1, textSize, myFile);
+    while(fread(text, 1, textSize, myFile)) {}
     fclose(myFile);
     return 0;
 }

@@ -7,6 +7,46 @@
 #include <cstring>
 #include <cmath>
 
+const int operatorsCount = 22;
+
+class smileOp {
+public:
+    std::string opName = "";
+    std::string symbol = "";
+    int size = 0;
+
+    smileOp(std::string opName, std::string symbol, int size) {
+        this->opName = opName;
+        this->symbol = symbol;
+        this->size = size;
+    }
+};
+
+static const smileOp smileOperators[operatorsCount] = {
+        smileOp("if", "❔", 3),               // 0
+        smileOp("no", "❌", 3),               // 1
+        smileOp("yes", "✅", 3),              // 2
+        smileOp("func", "😻", 4),             // 3
+        smileOp("leftFist", "🤛", 4),         // 4
+        smileOp("rightFist", "🤜", 4),        // 5
+        smileOp("print", "😱", 4),            // 6
+        smileOp("openBrackets", "⏪", 3),     // 7
+        smileOp("closeBrackets", "⏩", 3),    // 8
+        smileOp("separator", "▶", 3),        // 9
+        smileOp("comma", "✂", 3),            // 10
+        smileOp("assignment", "✏", 3),       // 11
+        smileOp("and", "⭐", 3),              // 12
+        smileOp("or", "🆚", 4),               // 13
+        smileOp("negative", "❕", 3),         // 14
+        smileOp("scan", "👂",4),              // 15
+        smileOp("global", "🌏",4),            // 16
+        smileOp("return", "🔙",4),            // 17
+        smileOp("circle", "🔁",4),            // 18
+        smileOp("sqrt", "✔", 3),              // 19      
+        smileOp("==", "🆔", 4),               // 20 
+        smileOp("<", "◀", 3)                 // 21        
+};
+
 namespace tree {
 #include "fileRead.h"
 
@@ -21,8 +61,9 @@ namespace tree {
     enum nodeTypes {
         NO_TYPE = 0,
         NUMBER = 1,
-        OPERATION = 2,
+        MATH_OPERATION = 2,
         VARIABLE = 3,
+        SYNTAX_OPERATION = 4,
     };
 
 #define DEF_CMD(name, num, sign, code, texCode) \
@@ -81,9 +122,9 @@ namespace tree {
             *dumpFile << "node_" << node << " [shape=record, label=\" { "<< node
                       << " | { Val: ";
 
-            if (node->nodeType == VARIABLE) *dumpFile << (char) (node->value + 'a');
-            else if (node->nodeType == OPERATION) *dumpFile << getEnumName(node->value);
-            else *dumpFile << node->value;
+//            if (node->nodeType == VARIABLE) *dumpFile << node->value;
+//            else if (node->nodeType == MATH_OPERATION) *dumpFile << node->value;
+            *dumpFile << node->value;
 
             *dumpFile << " | Type: " << node->nodeType
                       << " } | { left: " << node->leftChild
@@ -158,60 +199,472 @@ namespace tree {
             getG(buffer);
         }
 
-        Node <elemType> *getG(char *str) {
-            s = str;
-            Node <elemType> *valNode = getE();
-            if (*s != '\0') {
-                printf("Syntax error: expected end of row\n");
-                exit(SYNTAX_ERROR);
-            }
-            root = valNode;
-            return valNode;
+        Node <elemType> *getGlobal() {
+            skipUnprintableSymbols();
+            Node <elemType> *node = nullptr;
+
+            if (isOpCompared(16)) {
+                node = newNode("D", SYNTAX_OPERATION);
+                s += smileOperators[16].size;
+
+                node->rightChild = getVar();
+
+            } else if(isOpCompared(3)) {
+                node = newNode("D", SYNTAX_OPERATION);
+                s += smileOperators[3].size;
+
+                node->rightChild = getFunc();
+
+            } else
+                return node;
+
+            getOpEnd();
+
+            node->leftChild = getGlobal();
+            return node;
         }
 
-//        Node <elemType> *getGlobal() {
-//            if ()
-//        }
+        void getOpEnd() {
+            skipUnprintableSymbols();
+            if (isOpCompared(9)) {
+                s += smileOperators[9].size;
+            } else {
+                printf("Syntax error: expected \'▶\' at the end of operation\n");
+                exit(SYNTAX_ERROR);
+            }
+        }
 
-        Node <elemType> *getN() {
+        Node <elemType> *getFunc() {
+            skipUnprintableSymbols();
+            Node <elemType> *node = newNode("Def", SYNTAX_OPERATION);
+            Node <elemType> *rightVal = node->rightChild = getStr();
 
-            if ((*s == '-' && isdigit(*(s + 1))) || isdigit(*s)){
-                elemType val = 0;
-                int size = 0;
+            skipUnprintableSymbols();
+            if (isOpCompared(7)) {
+                s += smileOperators[7].size;
+                node->leftChild = getVarList();
 
-                sscanf(s, "%lf%n", &val, &size);
-                s += size;
+                skipUnprintableSymbols();
+                if (isOpCompared(8)) {
+                    s += smileOperators[8].size;
+                } else {
+                    printf("Syntax error: expected \'⏩\' after function args\n");
+                    exit(SYNTAX_ERROR);
+                }
+            } else {
+                printf("Syntax error: expected \'⏪\' after function name\n");
+                exit(SYNTAX_ERROR);
+            }
 
-                Node <elemType> *node = newNode(val);
-                node->nodeType = NUMBER;
+            rightVal->rightChild = getBWrap();
+
+            return node;
+        }
+
+        Node <elemType> *getBWrap() {
+            Node <elemType> *node = nullptr;
+            skipUnprintableSymbols();
+            if (isOpCompared(4)){
+                s += smileOperators[4].size;
+                node = getB();
+
+                skipUnprintableSymbols();
+                if (isOpCompared(5)) {
+                    s += smileOperators[5].size;
+                } else {
+                    printf("Syntax error: expected \'🤜\' after 🤛\n");
+                    exit(SYNTAX_ERROR);
+                }
+            } else {
+                printf("Syntax error: expected \'🤛\' after function init\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getB() {
+            Node <elemType> *node = newNode("B", SYNTAX_OPERATION);
+            node->rightChild = getOp();
+            return node;
+        }
+
+        Node <elemType> *getOp() {
+            Node <elemType> *node = newNode("Op", SYNTAX_OPERATION);
+
+            skipUnprintableSymbols();
+            if (isOpCompared(7)){
+                char *sStart = s;
+                s += smileOperators[7].size;
+
+                while (!isOpCompared(8)) {
+                    s++;
+                }
+                s += smileOperators[8].size;
+
+                skipUnprintableSymbols();
+                if (isOpCompared(0)) {
+                    s = sStart;
+                    node->rightChild = getIf();
+                    getOpEnd();
+
+                    node->leftChild = getOp();
+                } else {
+                    printf("Syntax error: expected \'❔\' after condition\n");
+                    exit(SYNTAX_ERROR);
+                }
+
                 return node;
             }
 
-            double val = *s - 'a';
-            s++;
+            if (isOpCompared(18)) {
+                s += smileOperators[18].size;
+                node->rightChild = getWhile();
 
-            Node <elemType> *node = newNode(val);
-            node->nodeType = VARIABLE;
+                getOpEnd();
+                node->leftChild = getOp();
+                return node;
+            }
+
+            if (isOpCompared(16)) {
+                s += smileOperators[16].size;
+                node->rightChild = getVar();
+
+                getOpEnd();
+                node->leftChild = getOp();
+                return node;
+            }
+
+            if(isalpha(*s)) {
+                char *sStart = s;
+                while (*s != ' ') s++;
+
+                skipUnprintableSymbols();
+                if (isOpCompared(7)) {
+                    s = sStart;
+                    node->rightChild = getCall();
+                } else {
+                    s = sStart;
+                    node->rightChild = getAssign();
+                }
+
+                getOpEnd();
+                node->leftChild = getOp();
+                return node;
+            }
+
+            if (isOpCompared(6)) {
+                s += smileOperators[6].size;
+
+                node->rightChild = getPrint();
+
+                getOpEnd();
+                node->leftChild = getOp();
+                return node;
+            }
+
+            if (isOpCompared(15)) {
+                s += smileOperators[15].size;
+
+                node->rightChild = getScan();
+
+                getOpEnd();
+                node->leftChild = getOp();
+                return node;
+            }
+
+            if (isOpCompared(17)) {
+                s += smileOperators[17].size;
+
+                node->rightChild = getRet();
+
+                getOpEnd();
+                node->leftChild = getOp();
+                return node;
+            }
+
+            return nullptr;
+        }
+
+        Node <elemType> *getCall() {
+            Node <elemType> *node = newNode("Call", SYNTAX_OPERATION);
+
+            node->rightChild = getStr();
+
+            skipUnprintableSymbols();
+            if (isOpCompared(7)) {
+                s += smileOperators[7].size;
+
+                node->leftChild = getVarList();
+
+                skipUnprintableSymbols();
+                if (isOpCompared(8)) {
+                    s += smileOperators[8].size;
+                } else {
+                    printf("Syntax error: expected \'⏩\' after ⏪\n");
+                    exit(SYNTAX_ERROR);
+                }
+            } else {
+                printf("Syntax error: expected \'⏪\' after function call\n");
+                exit(SYNTAX_ERROR);
+            }
+
             return node;
         }
+
+        Node <elemType> *getRet() {
+            Node <elemType> *node = newNode("Return", SYNTAX_OPERATION);
+
+            node->rightChild = getExp();
+            if (!node->rightChild) {
+                printf("Syntax error: expected variable after 👂\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getScan() {
+            Node <elemType> *node = newNode("Input", SYNTAX_OPERATION);
+
+            node->rightChild = getStr();
+            if (!node->rightChild) {
+                printf("Syntax error: expected variable after 👂\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getPrint() {
+            Node <elemType> *node = newNode("Output", SYNTAX_OPERATION);
+
+            node->rightChild = getExp();
+            if (!node->rightChild) {
+                printf("Syntax error: expected variable after 😱\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getAssign() {
+            Node <elemType> *node = newNode("=", SYNTAX_OPERATION);
+
+            node->leftChild = getStr();
+
+            skipUnprintableSymbols();
+            if (isOpCompared(11)) {
+                s += smileOperators[11].size;
+
+                node->rightChild = getExp();
+            } else {
+                printf("Syntax error: expected \'✏\' after variable\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getWhile() {
+            Node <elemType> *node = newNode("While", SYNTAX_OPERATION);
+
+            skipUnprintableSymbols();
+            if (isOpCompared(7)) {
+                s += smileOperators[7].size;
+                node->leftChild = getCond();
+
+                if (isOpCompared(8)) {
+                    s += smileOperators[8].size;
+                } else {
+                    printf("Syntax error: expected \'⏩\' after ⏪\n");
+                    exit(SYNTAX_ERROR);
+                }
+            } else {
+                printf("Syntax error: expected \'⏪\' after 🔁\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            node->rightChild = getBWrap();
+
+            return node;
+        }
+
+        Node <elemType> *getIf() {
+            Node <elemType> *node = newNode("If", SYNTAX_OPERATION);
+
+            skipUnprintableSymbols();
+            if (isOpCompared(7)) {
+                s += smileOperators[7].size;
+                node->leftChild = getCond();
+
+                skipUnprintableSymbols();
+                if (isOpCompared(8)) {
+                    s += smileOperators[8].size;
+                }
+            }
+
+            skipUnprintableSymbols();
+            if (isOpCompared(0)) {
+                s += smileOperators[0].size;
+            }
+
+            node->rightChild = getC();
+
+            return node;
+        }
+
+        Node <elemType> *getCond() {
+            Node <elemType> *node = getEq();
+            return node;
+        }
+
+        Node <elemType> *getEq() {
+            Node <elemType> *leftVal = getExp();
+            Node <elemType> *node = nullptr;
+
+            skipUnprintableSymbols();
+            if (isOpCompared(20)) {
+                node = newNode("==", SYNTAX_OPERATION);
+                s += smileOperators[20].size;
+
+            } else if (isOpCompared(21)) {
+                node = newNode("smaller", SYNTAX_OPERATION);
+                s += smileOperators[21].size;
+
+            } else if (isOpCompared(9)) {
+                node = newNode("bigger", SYNTAX_OPERATION);
+                s += smileOperators[9].size;
+
+            } else {
+                printf("Syntax error: expected conditional operation\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            node->leftChild = leftVal;
+            node->rightChild = getExp();
+
+            return node;
+        }
+
+        Node <elemType> *getC() {
+            Node <elemType> *node = newNode("C", SYNTAX_OPERATION);
+
+            skipUnprintableSymbols();
+            if (isOpCompared(2)) {
+                s += smileOperators[2].size;
+
+                node->rightChild = getBWrap();
+            } else {
+                printf("Syntax error: expected \'✅\' after ❔\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            skipUnprintableSymbols();
+            if (isOpCompared(1)) {
+                s += smileOperators[1].size;
+
+                node->leftChild = getBWrap();
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getExp() {
+            Node <elemType> *node = getE();
+            return node;
+        }
+
+        Node <elemType> *getVarList() {
+            skipUnprintableSymbols();
+
+            Node <elemType> *rightVal = getStr();
+
+            if (!rightVal) return nullptr;
+
+            Node <elemType> *node = newNode("varlist", SYNTAX_OPERATION);
+            node->rightChild = rightVal;
+
+            skipUnprintableSymbols();
+            if (isOpCompared(10)) {
+                s += smileOperators[10].size;
+                node->leftChild = getVarList();
+            }
+
+            return node;
+        }
+
+        Node <elemType> *getVar() {
+            skipUnprintableSymbols();
+            Node <elemType> *node = newNode("Var", SYNTAX_OPERATION);
+            node->rightChild = getStr();
+
+            skipUnprintableSymbols();
+            if (isOpCompared(11)) {
+                s += smileOperators[11].size;
+                node->leftChild = getExp();
+            }
+            return node;
+        }
+
+        Node <elemType> *getStr() {
+            skipUnprintableSymbols();
+            Node <elemType> *node = newNode(s);
+
+            if (isalpha(*s)) node->nodeType = VARIABLE;
+            else if (isalnum(*s)) node->nodeType = NUMBER;
+            else return nullptr;
+
+            while (*s != ' ') s++;
+            *s = '\0';
+            s++;
+            return node;
+        }
+
+//        Node <elemType> *getN() {
+//            skipUnprintableSymbols();
+//
+//            if ((*s == '-' && isdigit(*(s + 1))) || isdigit(*s)){
+//                elemType val = 0;
+//                int size = 0;
+//
+//                sscanf(s, "%lf%n", &val, &size);
+//                s += size;
+//
+//                Node <elemType> *node = newNode(val);
+//                node->nodeType = NUMBER;
+//                return node;
+//            }
+//
+//            double val = *s - 'a';
+//            s++;
+//
+//            Node <elemType> *node = newNode(val);
+//            node->nodeType = VARIABLE;
+//            return node;
+//        }
 
         Node <elemType> *getT() {
             Node <elemType> *valLeft = getD();
             Node <elemType> *node = nullptr;
             Node <elemType> *valRight = nullptr;
 
+            skipUnprintableSymbols();
             while (*s == '*' || *s == '/') {
+                skipUnprintableSymbols();
+
                 char op = *s;
                 s++;
 
                 valRight = getD();
 
+                skipUnprintableSymbols();
                 if (op == '*') {
-                    node = newNode(MUL);
-                }else node = newNode(DIV);
+                    node = newNode("*");
+                }else node = newNode("/");
 
                 tyingNodes(node, valLeft, valRight);
-                node->nodeType = OPERATION;
+                node->nodeType = MATH_OPERATION;
 
                 valLeft = node;
             }
@@ -232,18 +685,22 @@ namespace tree {
             Node <elemType> *node = nullptr;
             Node <elemType> *valRight = nullptr;
 
+            skipUnprintableSymbols();
             while (*s == '+' || *s == '-') {
+                skipUnprintableSymbols();
+
                 char op = *s;
                 s++;
 
                 valRight = getT();
 
+                skipUnprintableSymbols();
                 if (op == '+') {
-                    node = newNode(ADD);
-                } else node = newNode(SUB);
+                    node = newNode("+");
+                } else node = newNode("-");
 
                 tyingNodes(node, valLeft, valRight);
-                node->nodeType = OPERATION;
+                node->nodeType = MATH_OPERATION;
 
                 valLeft = node;
             }
@@ -252,6 +709,8 @@ namespace tree {
         }
 
         Node <elemType> *getP() {
+            skipUnprintableSymbols();
+
             if (*s == '(') {
                 s++;
                 Node <elemType> *valNode = getE();
@@ -261,7 +720,21 @@ namespace tree {
                 }
                 s++;
                 return valNode;
-            } else return getN();
+            } else if (isalpha(*s)) {
+                char *sStart = s;
+
+                while (*s != ' ' || isOpCompared(7)) s++;
+
+                skipUnprintableSymbols();
+                if (isOpCompared(7)) {
+                    s = sStart;
+                    return getCall();
+                }
+
+                s = sStart;
+                return getStr();
+
+            } else return getStr();
         }
 
         Node <elemType> *getD() {
@@ -269,17 +742,20 @@ namespace tree {
             Node <elemType> *node = nullptr;
             Node <elemType> *valRight = nullptr;
 
+            skipUnprintableSymbols();
             while (*s == '^') {
+                skipUnprintableSymbols();
+
                 char op = *s;
                 s++;
 
                 valRight = getF();
-                node = newNode(DEG);
+                node = newNode("^");
             }
 
             if (!node) return valLeft;
             tyingNodes(node, valLeft, valRight);
-            node->nodeType = OPERATION;
+            node->nodeType = MATH_OPERATION;
 
             return node;
         }
@@ -288,44 +764,31 @@ namespace tree {
             Node <elemType> *node = nullptr;
             Node <elemType> *valRight = nullptr;
 
-            if (!isalpha(*s)) {
+            skipUnprintableSymbols();
+            if (isOpCompared(19)) {
+                s += smileOperators[19].size;
+            } else {
                 return getP();
             }
 
-            char func[10] = "";
-            char *funcStart = s;
-            while (isalpha(*s)) {
-                func[s - funcStart] = *s;
+            skipUnprintableSymbols();
+            if (*s == '(') {
                 s++;
-            }
-
-            if (*s != '(') {
-                s = funcStart;
-                return getN();
-            }
-            s++;
-
-            int val = 0;
-#define DEF_CMD(name, num, sign, code, texCode) \
-    if (!strcmp(func, sign)) val = num; \
-    else
-#include "operations.h"
-
-#undef DEF_CMD
-            {
-                printf("Syntax error: unknown function %s", func);
+            } else {
+                printf("Syntax error: expected '(' after ✔");
                 exit(SYNTAX_ERROR);
             }
 
             valRight = getE();
 
+            skipUnprintableSymbols();
             if (*s != ')') {
-                printf("Syntax error: expected ')' after %s argument", func);
+                printf("Syntax error: expected ')' after (");
                 exit(SYNTAX_ERROR);
             }
             s++;
 
-            node = newNode(val, OPERATION);
+            node = newNode("sqrt", MATH_OPERATION);
             tyingNodes(node, nullptr, valRight);
             return node;
         }
@@ -338,7 +801,7 @@ namespace tree {
                 if (node->value < 0) fprintf(tex, "\\right)");
             }
             else if (node->nodeType == VARIABLE) fprintf(tex, "%c", (char) (node->value + 'a'));
-            else if (node->nodeType == OPERATION) {
+            else if (node->nodeType == MATH_OPERATION) {
 #define DEF_CMD(name, num, sign, code, texCode) \
             case num: texCode break;
 
@@ -372,7 +835,24 @@ namespace tree {
 
         Tree() = default;
 
-        Node <elemType> *newNode(elemType val, elemType type = NOTHING) {
+        Node <elemType> *getG(char *str) {
+            s = str;
+
+            skipUnprintableSymbols();
+            Node <elemType> *valNode = getGlobal();
+
+            skipUnprintableSymbols();
+            if (*s != '\0') {
+                printf("Syntax error: expected end of row\n");
+                exit(SYNTAX_ERROR);
+            }
+
+            root = newNode("P", SYNTAX_OPERATION);
+            root->rightChild = valNode;
+            return root;
+        }
+
+        Node <elemType> *newNode(elemType val, int type = NOTHING) {
             auto *node = new Node <elemType> (val);
             node->nodeType = type;
             return node;
@@ -544,7 +1024,7 @@ namespace tree {
         }
 
         size_t simplifyMul0(Node <elemType> *node, size_t simplifyCount){
-            if (node->nodeType == OPERATION && node->value == MUL) {
+            if (node->nodeType == MATH_OPERATION && node->value == MUL) {
                 bool check = false;
                 if (node->leftChild && node->leftChild->nodeType == NUMBER && node->leftChild->value == 0) check = true;
                 if (node->rightChild && node->rightChild->nodeType == NUMBER && node->rightChild->value == 0) check = true;
@@ -563,7 +1043,7 @@ namespace tree {
         }
 
         size_t simplifyDiv0(Node <elemType> *node, size_t simplifyCount){
-            if (node->nodeType == OPERATION && node->value == DIV) {
+            if (node->nodeType == MATH_OPERATION && node->value == DIV) {
                 if (node->leftChild->nodeType == NUMBER && node->leftChild->value == 0) {
                     deleteChildren(node);
                     node->value = 0;
@@ -580,7 +1060,7 @@ namespace tree {
         size_t simplifyAdd0(Node <elemType> **nodePointer, size_t simplifyCount) {
             Node <elemType> *node = *nodePointer;
 
-            if (node && node->nodeType == OPERATION && node->value == ADD) {
+            if (node && node->nodeType == MATH_OPERATION && node->value == ADD) {
                 if (node->leftChild && node->leftChild->nodeType == NUMBER && node->leftChild->value == 0) {
                     delete node->leftChild;
                     node->leftChild = nullptr;
@@ -603,10 +1083,10 @@ namespace tree {
         size_t simplifySub0(Node <elemType> **nodePointer, size_t simplifyCount) {
             Node <elemType> *node = *nodePointer;
 
-            if (node->nodeType == OPERATION && node->value == SUB) {
+            if (node->nodeType == MATH_OPERATION && node->value == SUB) {
                 if (node->leftChild && node->leftChild->nodeType == NUMBER && node->leftChild->value == 0) {
                     node->value = MUL;
-                    node->nodeType = OPERATION;
+                    node->nodeType = MATH_OPERATION;
                     node->leftChild->value = -1;
                     simplifyCount++;
                 }
@@ -625,7 +1105,7 @@ namespace tree {
         size_t simplifyMul1(Node <elemType> **nodePointer, size_t simplifyCount) {
             Node <elemType> *node = *nodePointer;
 
-            if (node->nodeType == OPERATION && node->value == MUL) {
+            if (node->nodeType == MATH_OPERATION && node->value == MUL) {
                 if (node->leftChild && node->leftChild->nodeType == NUMBER && node->leftChild->value == 1) {
                     delete node->leftChild;
                     *nodePointer = node->rightChild;
@@ -646,7 +1126,7 @@ namespace tree {
         size_t simplifyDiv1(Node <elemType> **nodePointer, size_t simplifyCount) {
             Node <elemType> *node = *nodePointer;
 
-            if (node->nodeType == OPERATION && node->value == DIV) {
+            if (node->nodeType == MATH_OPERATION && node->value == DIV) {
                 if (node->rightChild && node->rightChild->nodeType == NUMBER && node->rightChild->value == 1) {
                     delete node->rightChild;
                     *nodePointer = node->leftChild;
@@ -661,7 +1141,7 @@ namespace tree {
 
         size_t convolutionConst(Node <elemType> *node, size_t simplifyCount) {
             if (node->leftChild && node->rightChild) {
-                if (node->nodeType == OPERATION && node->leftChild->nodeType == NUMBER && node->rightChild->nodeType == NUMBER) {
+                if (node->nodeType == MATH_OPERATION && node->leftChild->nodeType == NUMBER && node->rightChild->nodeType == NUMBER) {
                     node->nodeType = NUMBER;
                     double leftNode = node->leftChild->value;
                     double rightNode = node->rightChild->value;
@@ -678,7 +1158,7 @@ namespace tree {
             }
 
             if (node->rightChild) {
-                if (node->nodeType == OPERATION && node->leftChild == nullptr && node->rightChild->nodeType == NUMBER) {
+                if (node->nodeType == MATH_OPERATION && node->leftChild == nullptr && node->rightChild->nodeType == NUMBER) {
                     node->nodeType = NUMBER;
                     double rightNode = node->rightChild->value;
 
@@ -707,6 +1187,17 @@ namespace tree {
 
             return checker;
         }
+
+        void skipUnprintableSymbols() {
+            while (*s == ' ' || *s == '\n' || *s == '\t') {
+                s++;
+            }
+        }
+
+        bool isOpCompared(int opNum) {
+            smileOp operation = smileOperators[opNum];
+            return !operation.symbol.compare(0, operation.size, s, operation.size);
+        }
     };
 
     int spaceN (const char *buffer) {
@@ -718,5 +1209,4 @@ namespace tree {
 
         return count;
     }
-
 }
