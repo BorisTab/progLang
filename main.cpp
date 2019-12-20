@@ -6,7 +6,7 @@
 #include "tree.h"
 
 int main() {
-    char program[FILENAME_MAX] = "../emj.smile";
+    char program[FILENAME_MAX] = "../fibonacci.smile";
 
 //    std::ofstream debug ("../debug.txt");
 
@@ -18,10 +18,10 @@ int main() {
 //        std::cout << smileOperator.opName << smileOperator.symbol.length() << std::endl;
 //    }
 
-    tree::Tree <char *> langTree ('L', "AST.txt");
-//    langTree.getG(buffer);
+    tree::Tree <char *> langTree = {}; //('L', "AST.txt");
+    langTree.getG(buffer);
     langTree.dump();
-//    langTree.saveTo("AST.txt");
+    langTree.saveTo("fibonacci.ast");
 
 //    debug.close();
     delete [] buffer;

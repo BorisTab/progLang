@@ -155,10 +155,10 @@ namespace tree {
             }
 
             if (node->leftChild) saveNode(outFile, node->leftChild);
-            else *outFile << "@ ";
+            else *outFile << "{ @ } ";
 
             if (node->rightChild) saveNode(outFile, node->rightChild);
-            else *outFile << "@ ";
+            else *outFile << "{ @ } ";
 
             *outFile << "} ";
         }
@@ -166,7 +166,7 @@ namespace tree {
         void writeNode(char **buffer, Node <elemType> *node) {
             (*buffer) += spaceN(*buffer);
 
-            if (**buffer == '@') (*buffer) += 1 + spaceN(*buffer + 1);
+            if (!strncmp(*buffer, "{ @ }", 5)) (*buffer) += 5 + spaceN(*buffer + 5);
             else if (**buffer == '{'){
                 (*buffer) += 1 + spaceN((*buffer) + 1);
                 *(strchr(*buffer, ' ')) = '\0';
@@ -177,7 +177,7 @@ namespace tree {
             }
 
             (*buffer) += spaceN(*buffer);
-            if (**buffer == '@') (*buffer) += 1 + spaceN(*buffer + 1);
+            if (!strncmp(*buffer, "{ @ }", 5)) (*buffer) += 5 + spaceN(*buffer + 5);
             else if (**buffer == '{'){
                 (*buffer) += 1 + spaceN((*buffer) + 1);
                 *(strchr(*buffer, ' ')) = '\0';
@@ -614,7 +614,7 @@ namespace tree {
         Node <elemType> *getVarList() {
             skipUnprintableSymbols();
 
-            Node <elemType> *rightVal = getStr();
+            Node <elemType> *rightVal = getExp();
 
             if (!rightVal) return nullptr;
 
@@ -648,7 +648,7 @@ namespace tree {
             Node <elemType> *node = newNode(s);
 
             if (isalpha(*s)) node->nodeType = VARIABLE;
-            else if (isalnum(*s)) node->nodeType = NUMBER;
+            else if (isdigit(*s) || (*s == '-' && isdigit(*(s + 1) ))) node->nodeType = NUMBER;
             else return nullptr;
 
             while (*s != ' ') s++;
@@ -696,8 +696,8 @@ namespace tree {
 
                 skipUnprintableSymbols();
                 if (op == '*') {
-                    node = newNode("*");
-                }else node = newNode("/");
+                    node = newNode("MUL");
+                }else node = newNode("DIV");
 
                 tyingNodes(node, valLeft, valRight);
                 node->nodeType = MATH_OPERATION;
@@ -732,8 +732,8 @@ namespace tree {
 
                 skipUnprintableSymbols();
                 if (op == '+') {
-                    node = newNode("+");
-                } else node = newNode("-");
+                    node = newNode("ADD");
+                } else node = newNode("SUB");
 
                 tyingNodes(node, valLeft, valRight);
                 node->nodeType = MATH_OPERATION;
@@ -824,7 +824,7 @@ namespace tree {
             }
             s++;
 
-            node = newNode("sqrt", MATH_OPERATION);
+            node = newNode("SQR", MATH_OPERATION);
             tyingNodes(node, nullptr, valRight);
             return node;
         }
