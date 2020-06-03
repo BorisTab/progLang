@@ -1,12 +1,12 @@
-//#include <iostream>
+#include <iostream>
 #include <fstream>
 #include <codecvt>
 #include "fileRead.h"
 #include <regex>
 #include "tree.h"
 
-int main() {
-    char program[FILENAME_MAX] = "../fibonacci.smile";
+int main(const int argc, const char *argv[]) {
+    const char *program = argv[argc - 2];
 
 //    std::ofstream debug ("../debug.txt");
 
@@ -20,8 +20,8 @@ int main() {
 
     tree::Tree <char *> langTree = {}; //('L', "AST.txt");
     langTree.getG(buffer);
-    langTree.dump();
-    langTree.saveTo("fibonacci.ast");
+//    langTree.dump();
+    langTree.saveTo(argv[argc - 1]);
 
 //    debug.close();
     delete [] buffer;

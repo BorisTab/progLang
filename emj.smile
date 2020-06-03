@@ -1,8 +1,8 @@
-🌏 boka ✏ 34 ▶
-🌏 joka ▶
-
 😻 func1 ⏪ ⏩ 🤛
+	🌏 boka ✏ 34 ▶
+	🌏 joka ▶
 	🌏 varInFunc1 ▶
+	
 	varInFunc1 ✏ 10 * 5 * ( 3 + func2 ⏪ varInFunc1 ✂ boka ⏩ ) ▶
 
 	😱 varInFunc1 ▶
@@ -10,6 +10,9 @@
 🤜▶
 
  🏁 ⏪ arg1 ✂ arg2 ⏩ 🤛
+ 	🌏 boka ✏ 34 ▶
+	🌏 joka ▶
+
 	🔁 ⏪joka ◀ 0 ⏩ 🤛
 		👂 joka ▶
 	🤜 ▶
